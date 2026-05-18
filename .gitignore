@@ -1,0 +1,5 @@
+/vendor
+.env
+docker-compose.override.yml
+/storage/*.key
+/storage/logs/*

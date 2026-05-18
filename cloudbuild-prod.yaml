@@ -1,0 +1,44 @@
+# PROD PIPELINE — triggers on git tags (e.g. v1.0.0)
+# Promotes the same image from dev, deploys to Cloud Run prod
+
+substitutions:
+  _REGION: "us-east4"
+  _DB_HOST: "/cloudsql/watchful-force-495414-t4:us-east4:pitcrew-db-dev"
+  _DB_NAME: "pitcrew_db"
+  _DB_USER: "laravel_user"
+  _CLOUD_RUN_SERVICE: "pitcrew-api-prod"
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--target=production'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/pitcrew-repo-dev/laravel-api:${TAG_NAME}'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/pitcrew-repo-dev/laravel-api:${TAG_NAME}'
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_CLOUD_RUN_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/pitcrew-repo-dev/laravel-api:${TAG_NAME}'
+      - '--region=${_REGION}'
+      - '--allow-unauthenticated'
+      - '--service-account=cloud-build-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--add-cloudsql-instances=watchful-force-495414-t4:us-east4:pitcrew-db-dev'
+      - '--update-env-vars=APP_ENV=production,APP_DEBUG=false,LOG_CHANNEL=stackdriver,DB_CONNECTION=pgsql,DB_HOST=${_DB_HOST},DB_PORT=5432,DB_DATABASE=${_DB_NAME},DB_USERNAME=${_DB_USER}'
+      - '--set-secrets=APP_KEY=laravel-app-key:latest,DB_PASSWORD=laravel-db-password:latest'
+
+timeout: '1800s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/pitcrew-repo-dev/laravel-api:${TAG_NAME}'
