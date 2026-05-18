@@ -3,8 +3,8 @@ FROM php:8.1-fpm-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache curl git libpq-dev && \
-    docker-php-ext-install pdo_pgsql
+RUN apk add --no-cache curl git postgresql-dev && \
+    docker-php-ext-install pdo_pgsql opcache
 
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
     php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
@@ -21,7 +21,7 @@ FROM php:8.1-fpm-alpine AS development
 
 WORKDIR /app
 
-RUN apk add --no-cache vim bash nginx libpq
+RUN apk add --no-cache vim bash nginx postgresql-libs
 
 COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
@@ -47,7 +47,7 @@ FROM php:8.1-fpm-alpine AS staging
 
 WORKDIR /app
 
-RUN apk add --no-cache nginx libpq
+RUN apk add --no-cache nginx postgresql-libs
 
 COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
@@ -73,10 +73,7 @@ FROM php:8.1-fpm-alpine AS production
 
 WORKDIR /app
 
-RUN apk add --no-cache nginx curl jq libpq && \
-    apk add --no-cache --virtual .build-deps postgresql-dev && \
-    docker-php-ext-install opcache && \
-    apk del .build-deps
+RUN apk add --no-cache nginx curl jq postgresql-libs
 
 COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/etc/php/conf.d /usr/local/etc/php/conf.d
